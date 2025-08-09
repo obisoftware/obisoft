@@ -1,99 +1,39 @@
-<!DOCTYPE html>
+<!--
+Q&A System - index.html
+Supabase URL and ANON KEY: replace the values in the CONFIG section if needed.
+This single-file page implements Register & Login using Supabase, and collects extra fields:
+username, phone, dob, profession. After signup it creates a row in 'users' table.
+
+Required Supabase tables:
+- users (id uuid PK, email text, username text, phone text, dob date, profession text, points int default 0, role text default 'user', created_at timestamptz default now())
+
+Note: The ANON key is public-safe for front-end use. Do NOT use service_role keys here.
+-->
+
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auth Page</title>
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: linear-gradient(120deg, #6a11cb, #2575fc);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-}
-.container {
-  background: white;
-  padding: 2rem;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-  width: 300px;
-  text-align: center;
-}
-h2 {
-  margin-bottom: 1rem;
-}
-input {
-  width: 100%;
-  padding: 0.6rem;
-  margin: 0.4rem 0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-button {
-  width: 100%;
-  padding: 0.6rem;
-  border: none;
-  background: #2575fc;
-  color: white;
-  font-weight: bold;
-  border-radius: 5px;
-  cursor: pointer;
-}
-button:hover {
-  background: #1b5fd1;
-}
-.toggle-link {
-  margin-top: 0.8rem;
-  color: #2575fc;
-  cursor: pointer;
-  display: block;
-}
-</style>
-</head>
-<body>
-
-<div class="container">
-
-  <!-- Sign Up Form -->
-  <div id="signupForm">
-    <h2>Sign Up</h2>
-    <input type="text" placeholder="Username" />
-    <input type="email" placeholder="Email" />
-    <input type="password" placeholder="Password" />
-    <input type="tel" placeholder="Phone Number" />
-    <input type="date" placeholder="Date of Birth" />
-    <input type="text" placeholder="Profession" />
-    <button>Sign Up</button>
-    <span class="toggle-link" onclick="showLogin()">Already signed up?</span>
-  </div>
-
-  <!-- Login Form -->
-  <div id="loginForm" style="display:none;">
-    <h2>Login</h2>
-    <input type="email" placeholder="Email" />
-    <input type="password" placeholder="Password" />
-    <button>Login</button>
-    <span class="toggle-link" onclick="showSignup()">New user? Sign up here</span>
-  </div>
-
-</div>
-
-<script>
-function showLogin() {
-  document.getElementById("signupForm").style.display = "none";
-  document.getElementById("loginForm").style.display = "block";
-}
-function showSignup() {
-  document.getElementById("loginForm").style.display = "none";
-  document.getElementById("signupForm").style.display = "block";
-}
-</script>
-
-</body>
-</html>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OBISOFT Q&A — Sign up / Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Advanced CSS: glassmorphism + subtle animations */
+    :root{
+      --bg1: linear-gradient(135deg,#0f172a 0%, #001f3f 100%);
+      --glass: rgba(255,255,255,0.06);
+      --glass-2: rgba(255,255,255,0.04);
+      --accent: #7c5cff;
+      --accent-2: #34d399;
+      --muted: rgba(255,255,255,0.7);
+      --card-radius: 16px;
+      color-scheme: dark;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    html,body{height:100%;margin:0}
+    body{
       background: radial-gradient(1000px 600px at 10% 10%, rgba(124,92,255,0.14), transparent),
                   radial-gradient(800px 500px at 90% 90%, rgba(52,211,153,0.08), transparent),
                   var(--bg1);
@@ -139,7 +79,6 @@ function showSignup() {
   </style>
 </head>
 <body>
-  <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
   <div class="container">
     <div class="panel">
       <header class="brand">
@@ -263,6 +202,91 @@ function showSignup() {
           <div style="font-weight:700;font-size:16px">${escapeHtml(userData.username || userData.email)}</div>
           <div class="small">Email: ${escapeHtml(userData.email)}</div>
           <div class="small">Phone: ${escapeHtml(userData.phone || '—')}</div>
+          <div class="small">DOB: ${escapeHtml(userData.dob || '—')}</div>
+          <div class="small">Profession: ${escapeHtml(userData.profession || '—')}</div>
+          <div style="margin-top:8px" class="small">Points: ${escapeHtml(String(userData.points||0))}</div>
+        </div>
+      `;
+    }
+
+    // Escape helper
+    function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
+
+    // Signup handler: create auth user, then insert profile in 'users' table
+    signupForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const email = document.getElementById('su-email').value.trim();
+      const password = document.getElementById('su-password').value;
+      const username = document.getElementById('su-username').value.trim();
+      const phone = document.getElementById('su-phone').value.trim();
+      const dob = document.getElementById('su-dob').value || null;
+      const profession = document.getElementById('su-profession').value.trim();
+
+      statusEl.textContent = 'Signing up...';
+
+      // Use Supabase Auth
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if(error){ alert('Signup error: ' + error.message); statusEl.textContent='Signup failed'; return }
+
+      // data.user contains user id
+      const userId = data.user?.id;
+
+      // insert profile into users table
+      const insert = await supabase.from('users').insert([{ id: userId, email, username, phone, dob, profession, points:0, role:'user' }]);
+      if(insert.error){
+        console.error('Insert profile error', insert.error);
+        statusEl.textContent='Profile creation failed';
+        alert('Profile creation error: ' + insert.error.message);
+        return;
+      }
+
+      statusEl.textContent = 'Signed up — check your email to confirm (if required).';
+      // sign in the user automatically if email confirmation not required
+      try{ await supabase.auth.signInWithPassword({email, password}); }catch(e){ /* ignore */ }
+      loadCurrentUser();
+    });
+
+    // Login handler
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const email = document.getElementById('li-email').value.trim();
+      const password = document.getElementById('li-password').value;
+      statusEl.textContent = 'Logging in...';
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if(error){ alert('Login error: ' + error.message); statusEl.textContent='Login failed'; return }
+      statusEl.textContent = 'Logged in';
+      loadCurrentUser();
+    });
+
+    // Load current user and profile
+    async function loadCurrentUser(){
+      const { data: { user } } = await supabase.auth.getUser();
+      if(!user){ authStateEl.textContent='anonymous'; statusEl.textContent='Not signed in'; renderProfile(null); return }
+      authStateEl.textContent = 'signed in'; statusEl.textContent = 'Signed in as ' + user.email;
+
+      // Fetch profile from users table
+      const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
+      if(error){ console.warn('Profile fetch error', error); renderProfile({email:user.email}); return }
+      renderProfile(profile);
+
+      // Redirect to dashboard (optional)
+      // window.location.href = 'dashboard.html';
+    }
+
+    // Auth state listener
+    supabase.auth.onAuthStateChange((event, session)=>{
+      // console.log('auth change', event, session);
+      loadCurrentUser();
+    });
+
+    // Initial load
+    loadCurrentUser();
+
+    // Small helper: create tables via REST (optional) - this snippet won't run automatically as it requires service key
+  </script>
+</body>
+</html>
+ss="small">Phone: ${escapeHtml(userData.phone || '—')}</div>
           <div class="small">DOB: ${escapeHtml(userData.dob || '—')}</div>
           <div class="small">Profession: ${escapeHtml(userData.profession || '—')}</div>
           <div style="margin-top:8px" class="small">Points: ${escapeHtml(String(userData.points||0))}</div>

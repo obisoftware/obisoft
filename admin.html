@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/@supabase/supabase-js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    padding: 20px;
+  }
+  h1 { text-align: center; }
+  .admin-section {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.05);
+  }
+  label { display: block; margin-top: 10px; font-weight: bold; }
+  input, select, button, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
+  button {
+    background: #007bff;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  button:hover { background: #0056b3; }
+</style>
+</head>
+<body>
+
+<h1>📊 Admin Dashboard</h1>
+
+<!-- Add New Quiz -->
+<div class="admin-section">
+  <h2>Add New Quiz</h2>
+  <label>Question:</label>
+  <textarea id="question"></textarea>
+
+  <label>Option A:</label>
+  <input type="text" id="optionA">
+
+  <label>Option B:</label>
+  <input type="text" id="optionB">
+
+  <label>Option C:</label>
+  <input type="text" id="optionC">
+
+  <label>Option D:</label>
+  <input type="text" id="optionD">
+
+  <label>Correct Answer:</label>
+  <select id="correctAnswer">
+    <option value="">Select</option>
+    <option value="A">A</option>
+    <option value="B">B</option>
+    <option value="C">C</option>
+    <option value="D">D</option>
+  </select>
+
+  <label>Time Limit (seconds):</label>
+  <input type="number" id="timeLimit">
+
+  <button onclick="addQuiz()">Add Quiz</button>
+</div>
+
+<!-- Manage Users -->
+<div class="admin-section">
+  <h2>Manage Users</h2>
+  <label>User ID:</label>
+  <input type="text" id="userId">
+
+  <label>New Points:</label>
+  <input type="number" id="userPoints">
+
+  <label>New Score:</label>
+  <input type="number" id="userScore">
+
+  <button onclick="updateUser()">Update User</button>
+</div>
+
+<script>
+  const { createClient } = supabase;
+  const supabaseClient = createClient(
+    "https://vuemfzksouxoxlbcyfrl.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1ZW1memtzb3V4b3hsYmN5ZnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MDcxNjUsImV4cCI6MjA3MDI4MzE2NX0.9UMubLiZCG0wFgwZcg_ZAJiZ48vS4MGoq7ox6Q9USUw"
+  );
+
+  async function addQuiz() {
+    const question = document.getElementById("question").value;
+    const optionA = document.getElementById("optionA").value;
+    const optionB = document.getElementById("optionB").value;
+    const optionC = document.getElementById("optionC").value;
+    const optionD = document.getElementById("optionD").value;
+    const correctAnswer = document.getElementById("correctAnswer").value;
+    const timeLimit = document.getElementById("timeLimit").value;
+
+    if (!question || !correctAnswer || !timeLimit) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    const { data, error } = await supabaseClient
+      .from("quizzes")
+      .insert([{
+        question,
+        option_a: optionA,
+        option_b: optionB,
+        option_c: optionC,
+        option_d: optionD,
+        correct_answer: correctAnswer,
+        time_limit: timeLimit
+      }]);
+
+    if (error) {
+      alert("Error adding quiz: " + error.message);
+    } else {
+      alert("Quiz added successfully!");
+      document.querySelectorAll("input, textarea, select").forEach(el => el.value = "");
+    }
+  }
+
+  async function updateUser() {
+    const userId = document.getElementById("userId").value;
+    const points = document.getElementById("userPoints").value;
+    const score = document.getElementById("userScore").value;
+
+    if (!userId) {
+      alert("User ID is required");
+      return;
+    }
+
+    const { data, error } = await supabaseClient
+      .from("user_scores")
+      .update({
+        points: points || undefined,
+        score: score || undefined
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      alert("Error updating user: " + error.message);
+    } else {
+      alert("User updated successfully!");
+    }
+  }
+</script>
+</body>
+</html>

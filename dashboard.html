@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7f9;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #4a90e2;
+      padding: 15px;
+      color: white;
+      text-align: center;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+    }
+    .profile-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .profile-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .scores {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    .start-btn {
+      display: inline-block;
+      background: #4a90e2;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+      margin-top: 10px;
+    }
+    .logout-btn {
+      background: #ff4b5c;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+      float: right;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Welcome to Your Dashboard</h1>
+    <a href="#" id="logoutBtn" class="logout-btn">Logout</a>
+  </header>
+  <div class="container">
+    <div class="profile-card">
+      <h2>User Information</h2>
+      <div class="profile-info">
+        <p><strong>Username:</strong> <span id="username"></span></p>
+        <p><strong>Profession:</strong> <span id="profession"></span></p>
+        <p><strong>Phone:</strong> <span id="phone"></span></p>
+        <p><strong>Date of Birth:</strong> <span id="dob"></span></p>
+        <p><strong>Points:</strong> <span id="points"></span></p>
+      </div>
+      <a href="quiz.html" class="start-btn">Start Quiz</a>
+    </div>
+
+    <div class="scores">
+      <h2>Your Scores</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Quiz</th>
+            <th>Score</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="scoreTable">
+          <tr><td colspan="3">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase;
+    const supabaseUrl = 'https://vuemfzksouxoxlbcyfrl.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1ZW1memtzb3V4b3hsYmN5ZnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MDcxNjUsImV4cCI6MjA3MDI4MzE2NX0.9UMubLiZCG0wFgwZcg_ZAJiZ48vS4MGoq7ox6Q9USUw';
+    const client = createClient(supabaseUrl, supabaseKey);
+
+    async function loadUserData() {
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const { data, error } = await client.from('users').select('*').eq('id', userId).single();
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      document.getElementById("username").textContent = data.username;
+      document.getElementById("profession").textContent = data.profession;
+      document.getElementById("phone").textContent = data.phone;
+      document.getElementById("dob").textContent = data.dob;
+      document.getElementById("points").textContent = data.points || 0;
+
+      loadScores(userId);
+    }
+
+    async function loadScores(userId) {
+      const { data, error } = await client.from('results').select('*').eq('user_id', userId);
+      const table = document.getElementById("scoreTable");
+      table.innerHTML = "";
+      if (error || !data.length) {
+        table.innerHTML = "<tr><td colspan='3'>No scores yet.</td></tr>";
+        return;
+      }
+
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.quiz_name}</td><td>${row.score}</td><td>${new Date(row.created_at).toLocaleDateString()}</td>`;
+        table.appendChild(tr);
+      });
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("userId");
+      window.location.href = "index.html";
+    });
+
+    loadUserData();
+  </script>
+</body>
+</html>

@@ -1,1 +1,289 @@
+<!--
+Q&A System - index.html
+Supabase URL and ANON KEY: replace the values in the CONFIG section if needed.
+This single-file page implements Register & Login using Supabase, and collects extra fields:
+username, phone, dob, profession. After signup it creates a row in 'users' table.
+
+Required Supabase tables:
+- users (id uuid PK, email text, username text, phone text, dob date, profession text, points int default 0, role text default 'user', created_at timestamptz default now())
+
+Note: The ANON key is public-safe for front-end use. Do NOT use service_role keys here.
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OBISOFT Q&A — Sign up / Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Advanced CSS: glassmorphism + subtle animations */
+    :root{
+      --bg1: linear-gradient(135deg,#0f172a 0%, #001f3f 100%);
+      --glass: rgba(255,255,255,0.06);
+      --glass-2: rgba(255,255,255,0.04);
+      --accent: #7c5cff;
+      --accent-2: #34d399;
+      --muted: rgba(255,255,255,0.7);
+      --card-radius: 16px;
+      color-scheme: dark;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    html,body{height:100%;margin:0}
+    body{
+      background: radial-gradient(1000px 600px at 10% 10%, rgba(124,92,255,0.14), transparent),
+                  radial-gradient(800px 500px at 90% 90%, rgba(52,211,153,0.08), transparent),
+                  var(--bg1);
+      display:flex;align-items:center;justify-content:center;padding:32px;
+    }
+    .container{
+      width:980px;max-width:98%;display:grid;grid-template-columns:420px 1fr;gap:28px;
+    }
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+      border-radius:var(--card-radius);padding:26px;backdrop-filter: blur(8px) saturate(120%);
+      box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.04);
+    }
+    header.brand{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    h1{margin:0;font-size:18px}
+    p.lead{color:var(--muted);margin:6px 0 18px}
+
+    form{display:flex;flex-direction:column;gap:10px}
+    label{font-size:13px;color:var(--muted)}
+    input,select{padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#fff;outline:none}
+    input::placeholder{color:rgba(255,255,255,0.35)}
+    .btn{padding:12px 14px;border-radius:12px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:600;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+
+    .divider{text-align:center;color:rgba(255,255,255,0.12);margin:8px 0}
+
+    .info{font-size:13px;color:rgba(255,255,255,0.8)}
+    .small{font-size:13px;color:rgba(255,255,255,0.6)}
+
+    .right{display:flex;flex-direction:column;gap:18px}
+    .card{padding:18px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.03)}
+    .preview{height:420px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.85);text-align:center}
+    .meta{display:flex;gap:10px;margin-top:8px}
+
+    .status{padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.35);color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:900px){
+      .container{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <header class="brand">
+        <div class="logo">OB</div>
+        <div>
+          <h1>OBISOFT Q&A — Signup / Login</h1>
+          <p class="lead">Create an account or login to take quizzes. We store extra profile info: username, phone, DOB, and profession.</p>
+        </div>
+      </header>
+
+      <div id="auth-forms">
+        <!-- Signup form -->
+        <form id="signup-form">
+          <h3 style="margin:0 0 6px">Create an account</h3>
+          <label>Email</label>
+          <input id="su-email" type="email" placeholder="you@example.com" required />
+
+          <label>Password</label>
+          <input id="su-password" type="password" placeholder="At least 8 characters" required minlength="8" />
+
+          <label>Username (display name)</label>
+          <input id="su-username" type="text" placeholder="e.g. joe_dev" required />
+
+          <label>Phone Number</label>
+          <input id="su-phone" type="tel" placeholder="+2348012345678" />
+
+          <label>Date of Birth</label>
+          <input id="su-dob" type="date" />
+
+          <label>Profession</label>
+          <input id="su-profession" type="text" placeholder="e.g. Web Developer" />
+
+          <div style="display:flex;gap:10px;margin-top:6px">
+            <button class="btn" type="submit">Sign up</button>
+            <button class="btn ghost" id="show-login" type="button">Already have an account?</button>
+          </div>
+        </form>
+
+        <div class="divider">OR</div>
+
+        <!-- Login Form -->
+        <form id="login-form" style="display:none">
+          <h3 style="margin:0 0 6px">Login</h3>
+          <label>Email</label>
+          <input id="li-email" type="email" placeholder="you@example.com" required />
+          <label>Password</label>
+          <input id="li-password" type="password" placeholder="Your password" required />
+          <div style="display:flex;gap:10px;margin-top:6px">
+            <button class="btn" type="submit">Log in</button>
+            <button class="btn ghost" id="show-signup" type="button">Create account</button>
+          </div>
+          <p class="small">You will be redirected to the dashboard after login.</p>
+        </form>
+
+      </div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="status" id="status">Not signed in</div>
+        <div class="small">Supabase project: <span id="project-id"></span></div>
+      </div>
+
+    </div>
+
+    <div class="right">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong>Quick Demo</strong>
+            <div class="small">Profile fields you added will display on the dashboard.</div>
+          </div>
+          <div class="meta">
+            <div class="small">Auth: <span id="auth-state">anonymous</span></div>
+          </div>
+        </div>
+        <div class="preview" id="profile-preview">No user</div>
+      </div>
+
+      <div class="card">
+        <strong>Next steps</strong>
+        <ol style="margin-top:10px">
+          <li>Create Supabase tables (users, quizzes, results).</li>
+          <li>Deploy this file to GitHub Pages or Netlify.</li>
+          <li>Build `quiz.html`, `dashboard.html`, and `admin.html` (I can generate those next).</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase JS via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // -------------------- CONFIG --------------------
+    // Replace these values if you want to change them later
+    const SUPABASE_URL = 'https://vuemfzksouxoxlbcyfrl.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1ZW1memtzb3V4b3hsYmN5ZnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MDcxNjUsImV4cCI6MjA3MDI4MzE2NX0.9UMubLiZCG0wFgwZcg_ZAJiZ48vS4MGoq7ox6Q9USUw';
+
+    // Initialize Supabase
+    const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // DOM elements
+    const signupForm = document.getElementById('signup-form');
+    const loginForm = document.getElementById('login-form');
+    const showLoginBtn = document.getElementById('show-login');
+    const showSignupBtn = document.getElementById('show-signup');
+    const projectIdEl = document.getElementById('project-id');
+    const statusEl = document.getElementById('status');
+    const authStateEl = document.getElementById('auth-state');
+    const profilePreview = document.getElementById('profile-preview');
+
+    projectIdEl.textContent = SUPABASE_URL.replace('https://','');
+
+    // toggle forms
+    showLoginBtn.addEventListener('click', ()=>{signupForm.style.display='none'; loginForm.style.display='block'});
+    showSignupBtn.addEventListener('click', ()=>{signupForm.style.display='block'; loginForm.style.display='none'});
+
+    // Helper to render user preview
+    function renderProfile(userData){
+      if(!userData){ profilePreview.textContent = 'No user'; return}
+      profilePreview.innerHTML = `
+        <div style="text-align:left">
+          <div style="font-weight:700;font-size:16px">${escapeHtml(userData.username || userData.email)}</div>
+          <div class="small">Email: ${escapeHtml(userData.email)}</div>
+          <div class="small">Phone: ${escapeHtml(userData.phone || '—')}</div>
+          <div class="small">DOB: ${escapeHtml(userData.dob || '—')}</div>
+          <div class="small">Profession: ${escapeHtml(userData.profession || '—')}</div>
+          <div style="margin-top:8px" class="small">Points: ${escapeHtml(String(userData.points||0))}</div>
+        </div>
+      `;
+    }
+
+    // Escape helper
+    function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
+
+    // Signup handler: create auth user, then insert profile in 'users' table
+    signupForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const email = document.getElementById('su-email').value.trim();
+      const password = document.getElementById('su-password').value;
+      const username = document.getElementById('su-username').value.trim();
+      const phone = document.getElementById('su-phone').value.trim();
+      const dob = document.getElementById('su-dob').value || null;
+      const profession = document.getElementById('su-profession').value.trim();
+
+      statusEl.textContent = 'Signing up...';
+
+      // Use Supabase Auth
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if(error){ alert('Signup error: ' + error.message); statusEl.textContent='Signup failed'; return }
+
+      // data.user contains user id
+      const userId = data.user?.id;
+
+      // insert profile into users table
+      const insert = await supabase.from('users').insert([{ id: userId, email, username, phone, dob, profession, points:0, role:'user' }]);
+      if(insert.error){
+        console.error('Insert profile error', insert.error);
+        statusEl.textContent='Profile creation failed';
+        alert('Profile creation error: ' + insert.error.message);
+        return;
+      }
+
+      statusEl.textContent = 'Signed up — check your email to confirm (if required).';
+      // sign in the user automatically if email confirmation not required
+      try{ await supabase.auth.signInWithPassword({email, password}); }catch(e){ /* ignore */ }
+      loadCurrentUser();
+    });
+
+    // Login handler
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const email = document.getElementById('li-email').value.trim();
+      const password = document.getElementById('li-password').value;
+      statusEl.textContent = 'Logging in...';
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if(error){ alert('Login error: ' + error.message); statusEl.textContent='Login failed'; return }
+      statusEl.textContent = 'Logged in';
+      loadCurrentUser();
+    });
+
+    // Load current user and profile
+    async function loadCurrentUser(){
+      const { data: { user } } = await supabase.auth.getUser();
+      if(!user){ authStateEl.textContent='anonymous'; statusEl.textContent='Not signed in'; renderProfile(null); return }
+      authStateEl.textContent = 'signed in'; statusEl.textContent = 'Signed in as ' + user.email;
+
+      // Fetch profile from users table
+      const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
+      if(error){ console.warn('Profile fetch error', error); renderProfile({email:user.email}); return }
+      renderProfile(profile);
+
+      // Redirect to dashboard (optional)
+      // window.location.href = 'dashboard.html';
+    }
+
+    // Auth state listener
+    supabase.auth.onAuthStateChange((event, session)=>{
+      // console.log('auth change', event, session);
+      loadCurrentUser();
+    });
+
+    // Initial load
+    loadCurrentUser();
+
+    // Small helper: create tables via REST (optional) - this snippet won't run automatically as it requires service key
+  </script>
+</body>
+  </html>
 

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+</head>
+<body>
+  <div class="quiz-container">
+    <h2 id="question">Loading...</h2>
+    <div id="options"></div>
+    <p id="timer">Time left: <span id="time">0</span> seconds</p>
+    <button id="submitBtn" disabled>Submit Answer</button>
+  </div>
+
+  <script>
+    // Connect to Supabase
+    const { createClient } = supabase;
+    const supabaseClient = createClient(
+      "https://vuemfzksouxoxlbcyfrl.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1ZW1memtzb3V4b3hsYmN5ZnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MDcxNjUsImV4cCI6MjA3MDI4MzE2NX0.9UMubLiZCG0wFgwZcg_ZAJiZ48vS4MGoq7ox6Q9USUw"
+    );
+
+    let currentQuestion = null;
+    let selectedAnswer = null;
+    let timerInterval;
+
+    async function loadQuiz() {
+      let { data, error } = await supabaseClient
+        .from('quizzes')
+        .select('*')
+        .limit(1);
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      currentQuestion = data[0];
+      document.getElementById("question").textContent = currentQuestion.question;
+
+      const optionsDiv = document.getElementById("options");
+      optionsDiv.innerHTML = "";
+
+      ["option_a", "option_b", "option_c", "option_d"].forEach(opt => {
+        let btn = document.createElement("button");
+        btn.textContent = currentQuestion[opt];
+        btn.onclick = () => selectAnswer(currentQuestion[opt]);
+        optionsDiv.appendChild(btn);
+      });
+
+      startTimer(currentQuestion.time_limit);
+    }
+
+    function selectAnswer(answer) {
+      selectedAnswer = answer;
+      document.querySelectorAll("#options button").forEach(btn => btn.classList.remove("selected"));
+      event.target.classList.add("selected");
+      document.getElementById("submitBtn").disabled = false;
+    }
+
+    function startTimer(seconds) {
+      let timeLeft = seconds;
+      document.getElementById("time").textContent = timeLeft;
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("time").textContent = timeLeft;
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          submitAnswer();
+        }
+      }, 1000);
+    }
+
+    async function submitAnswer() {
+      clearInterval(timerInterval);
+
+      if (!selectedAnswer) {
+        alert("No answer selected!");
+        return;
+      }
+
+      const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+      alert(isCorrect ? "✅ Correct!" : "❌ Wrong!");
+
+      // Update score in Supabase (Assume user_id stored in localStorage)
+      const user_id = localStorage.getItem("user_id");
+      if (user_id) {
+        let { data: scoreData, error } = await supabaseClient
+          .from('user_scores')
+          .update({
+            score: isCorrect ? supabaseClient.rpc('increment', { x: 1 }) : supabaseClient.rpc('increment', { x: 0 }),
+            points: isCorrect ? supabaseClient.rpc('increment', { x: 10 }) : supabaseClient.rpc('increment', { x: 0 })
+          })
+          .eq('user_id', user_id);
+
+        if (error) console.error(error);
+      }
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", submitAnswer);
+
+    loadQuiz();
+  </script>
+</body>
+</html>
